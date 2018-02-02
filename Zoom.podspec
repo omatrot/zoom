@@ -5,11 +5,11 @@ Pod::Spec.new do |s|
   s.license = { :text => '', :type => 'Commercial' }
   s.name = 'Zoom'
   s.summary = 'ZOOM iOS SDK'
-  s.version = '1.0.2'
+  s.version = '2.0.0'
 
   s.source = {
     :git => 'https://github.com/gravicle/zoom.git',
-    :tag => 'v1.0.2'
+    :tag => 'v2.0.0'
   }
 
   s.platform = :ios
