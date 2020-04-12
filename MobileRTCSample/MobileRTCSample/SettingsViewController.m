@@ -1,6 +1,6 @@
 //
 //  SettingsViewController.m
-//  ZoomSDKSample
+//  MobileRTCSample
 //
 //  Created by Robust Hu on 7/6/15.
 //  Copyright (c) 2015 Zoom Video Communications, Inc. All rights reserved.
@@ -8,37 +8,26 @@
 
 #import "SettingsViewController.h"
 #import "LanguaguePickerViewController.h"
+#import "MeetingSettingsViewController.h"
+#import "ScheduleTableViewController.h"
 #import <MobileRTC/MobileRTC.h>
+#import "SDKAuthPresenter.h"
+#import <MessageUI/MessageUI.h>
+#import "SSZipArchive.h"
 
-@interface SettingsViewController ()
+@interface SettingsViewController () <MFMailComposeViewControllerDelegate>
 
-@property (retain, nonatomic) UITableViewCell *autoConnectAudioCell;
-@property (retain, nonatomic) UITableViewCell *muteAudioCell;
-@property (retain, nonatomic) UITableViewCell *muteVideoCell;
-@property (retain, nonatomic) UITableViewCell *driveModeCell;
-@property (retain, nonatomic) UITableViewCell *callInCell;
-@property (retain, nonatomic) UITableViewCell *callOutCell;
-
-@property (retain, nonatomic) UITableViewCell *titleHiddenCell;
-@property (retain, nonatomic) UITableViewCell *leaveHiddenCell;
-@property (retain, nonatomic) UITableViewCell *inviteHiddenCell;
-@property (retain, nonatomic) UITableViewCell *shareHiddenCell;
-@property (retain, nonatomic) UITableViewCell *audioHiddenCell;
-@property (retain, nonatomic) UITableViewCell *videoHiddenCell;
-@property (retain, nonatomic) UITableViewCell *participantHiddenCell;
-@property (retain, nonatomic) UITableViewCell *moreHiddenCell;
-
-@property (retain, nonatomic) UITableViewCell *topBarHiddenCell;
-@property (retain, nonatomic) UITableViewCell *botBarHiddenCell;
-
-@property (retain, nonatomic) UITableViewCell *enableKubiCell;
-@property (retain, nonatomic) UITableViewCell *thumbnailCell;
-@property (retain, nonatomic) UITableViewCell *hostLeaveCell;
-
+@property (retain, nonatomic) UITableViewCell *meetingCell;
 @property (retain, nonatomic) UITableViewCell *languageCell;
+@property (retain, nonatomic) UITableViewCell *loginCell;
+@property (retain, nonatomic) UITableViewCell *scheduleCell;
+@property (retain, nonatomic) UITableViewCell *cleanLogCell;
+@property (retain, nonatomic) UITableViewCell *sendLogCell;
+@property (retain, nonatomic) UITableViewCell *swtichDomainCell;
 
 @property (retain, nonatomic) NSArray *itemArray;
 
+@property (retain, nonatomic) SDKAuthPresenter      *authPresenter;
 @end
 
 @implementation SettingsViewController
@@ -53,38 +42,7 @@
     [self.navigationItem setLeftBarButtonItem:closeItem];
     [closeItem release];
     
-    NSMutableArray *array = [NSMutableArray array];
-    [array addObject:@[[self autoConnectAudioCell]]];
-    [array addObject:@[[self muteAudioCell]]];
-    [array addObject:@[[self muteVideoCell]]];
-    if (UI_USER_INTERFACE_IDIOM() != UIUserInterfaceIdiomPad)
-        [array addObject:@[[self driveModeCell]]];
-    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad)
-        [array addObject:@[[self enableKubiCell]]];
-    [array addObject:@[[self thumbnailCell]]];
-    [array addObject:@[[self hostLeaveCell]]];
-    
-    NSMutableArray *ma = [NSMutableArray array];
-    [ma addObject:[self titleHiddenCell]];
-    [ma addObject:[self leaveHiddenCell]];
-    [ma addObject:[self audioHiddenCell]];
-    [ma addObject:[self videoHiddenCell]];
-    [ma addObject:[self inviteHiddenCell]];
-    [ma addObject:[self participantHiddenCell]];
-    [ma addObject:[self moreHiddenCell]];
-    [ma addObject:[self shareHiddenCell]];
-    [ma addObject:[self topBarHiddenCell]];
-    if (UI_USER_INTERFACE_IDIOM() != UIUserInterfaceIdiomPad)
-    {
-        [ma addObject:[self botBarHiddenCell]];
-    }
-    [array addObject:ma];
-    
-    [array addObject:@[[self callInCell], [self callOutCell]]];
-    
-    [array addObject:@[[self languageCell]]];
-    
-    self.itemArray = array;
+    [self initSettingItems];
 }
 
 - (void)didReceiveMemoryWarning {
@@ -97,443 +55,43 @@
     [self dismissViewControllerAnimated:YES completion:NULL];
 }
 
-#pragma mark - Table view cells
-
-- (UITableViewCell*)autoConnectAudioCell
+- (void)initSettingItems
 {
-    MobileRTCMeetingSettings *settings = [[MobileRTC sharedRTC] getMeetingSettings];
-    if (!settings)
-        return nil;
+    NSMutableArray *array = [NSMutableArray array];
     
-    BOOL isAutoConnected = [settings autoConnectInternetAudio];
-
-    if (!_autoConnectAudioCell)
+    [array addObject:@[[self meetingCell]]];
+    
+    [array addObject:@[[self languageCell]]];
+    
+    if ([[[MobileRTC sharedRTC] getAuthService] isLoggedIn])
     {
-        _autoConnectAudioCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-        _autoConnectAudioCell.selectionStyle = UITableViewCellSelectionStyleNone;
-        _autoConnectAudioCell.textLabel.text = NSLocalizedString(@"Auto Connect Internet Audio", @"");
-        
-        UISwitch *sv = [[UISwitch alloc] initWithFrame:CGRectZero];
-        [sv setOn:isAutoConnected animated:NO];
-        [sv addTarget:self action:@selector(onAutoConnectAudio:) forControlEvents:UIControlEventValueChanged];
-        _autoConnectAudioCell.accessoryView = sv;
+        [array addObject:@[[self scheduleCell]]];
     }
     
-    return _autoConnectAudioCell;
+    [array addObject:@[[self sendLogCell], [self cleanLogCell]]];
+    
+    [array addObject:@[[self swtichDomainCell]]];
+    
+    [array addObject:@[[self loginCell]]];
+    
+    self.itemArray = array;
+    
+    [self.tableView reloadData];
 }
 
-- (UITableViewCell*)muteAudioCell
-{
-    MobileRTCMeetingSettings *settings = [[MobileRTC sharedRTC] getMeetingSettings];
-    if (!settings)
-        return nil;
-    
-    BOOL isMuted = [settings muteAudioWhenJoinMeeting];
-    
-    if (!_muteAudioCell)
-    {
-        _muteAudioCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-        _muteAudioCell.selectionStyle = UITableViewCellSelectionStyleNone;
-        _muteAudioCell.textLabel.text = NSLocalizedString(@"Always Mute My Microphone", @"");
-        
-        UISwitch *sv = [[UISwitch alloc] initWithFrame:CGRectZero];
-        [sv setOn:isMuted animated:NO];
-        [sv addTarget:self action:@selector(onMuteAudio:) forControlEvents:UIControlEventValueChanged];
-        _muteAudioCell.accessoryView = sv;
-    }
-    
-    return _muteAudioCell;
-}
+#pragma mark - Table Cell
 
-- (UITableViewCell*)muteVideoCell
+- (UITableViewCell*)meetingCell
 {
-    MobileRTCMeetingSettings *settings = [[MobileRTC sharedRTC] getMeetingSettings];
-    if (!settings)
-        return nil;
-    
-    BOOL isMuted = [settings muteVideoWhenJoinMeeting];
-    
-    if (!_muteVideoCell)
+    if (!_meetingCell)
     {
-        _muteVideoCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-        _muteVideoCell.selectionStyle = UITableViewCellSelectionStyleNone;
-        _muteVideoCell.textLabel.text = NSLocalizedString(@"Always Mute My Video", @"");
-        
-        UISwitch *sv = [[UISwitch alloc] initWithFrame:CGRectZero];
-        [sv setOn:isMuted animated:NO];
-        [sv addTarget:self action:@selector(onMuteVideo:) forControlEvents:UIControlEventValueChanged];
-        _muteVideoCell.accessoryView = sv;
+        _meetingCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
+        _meetingCell.selectionStyle = UITableViewCellSelectionStyleNone;
+        _meetingCell.textLabel.text = NSLocalizedString(@"Meeting Settings", @"");
+        _meetingCell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
     }
     
-    return _muteVideoCell;
-}
-
-- (UITableViewCell*)driveModeCell
-{
-    MobileRTCMeetingSettings *settings = [[MobileRTC sharedRTC] getMeetingSettings];
-    if (!settings)
-        return nil;
-    
-    BOOL disabled = [settings driveModeDisabled];
-    
-    if (!_driveModeCell)
-    {
-        _driveModeCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-        _driveModeCell.selectionStyle = UITableViewCellSelectionStyleNone;
-        _driveModeCell.textLabel.text = NSLocalizedString(@"Disable Driving Mode", @"");
-        
-        UISwitch *sv = [[UISwitch alloc] initWithFrame:CGRectZero];
-        [sv setOn:disabled animated:NO];
-        [sv addTarget:self action:@selector(onDisableDriveMode:) forControlEvents:UIControlEventValueChanged];
-        _driveModeCell.accessoryView = sv;
-    }
-    
-    return _driveModeCell;
-}
-
-- (UITableViewCell*)callInCell
-{
-    MobileRTCMeetingSettings *settings = [[MobileRTC sharedRTC] getMeetingSettings];
-    if (!settings)
-        return nil;
-    
-    BOOL disabled = [settings callInDisabled];
-    
-    if (!_callInCell)
-    {
-        _callInCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-        _callInCell.selectionStyle = UITableViewCellSelectionStyleNone;
-        _callInCell.textLabel.text = NSLocalizedString(@"Disable Call in", @"");
-        
-        UISwitch *sv = [[UISwitch alloc] initWithFrame:CGRectZero];
-        [sv setOn:disabled animated:NO];
-        [sv addTarget:self action:@selector(onDisableCallIn:) forControlEvents:UIControlEventValueChanged];
-        _callInCell.accessoryView = sv;
-    }
-    
-    return _callInCell;
-}
-
-- (UITableViewCell*)callOutCell
-{
-    MobileRTCMeetingSettings *settings = [[MobileRTC sharedRTC] getMeetingSettings];
-    if (!settings)
-        return nil;
-    
-    BOOL disabled = [settings callOutDisabled];
-    
-    if (!_callOutCell)
-    {
-        _callOutCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-        _callOutCell.selectionStyle = UITableViewCellSelectionStyleNone;
-        _callOutCell.textLabel.text = NSLocalizedString(@"Disable Call Out", @"");
-        
-        UISwitch *sv = [[UISwitch alloc] initWithFrame:CGRectZero];
-        [sv setOn:disabled animated:NO];
-        [sv addTarget:self action:@selector(onDisableCallOut:) forControlEvents:UIControlEventValueChanged];
-        _callOutCell.accessoryView = sv;
-    }
-    
-    return _callOutCell;
-}
-
-- (UITableViewCell*)titleHiddenCell
-{
-    MobileRTCMeetingSettings *settings = [[MobileRTC sharedRTC] getMeetingSettings];
-    if (!settings)
-        return nil;
-    
-    BOOL hidden = [settings meetingTitleHidden];
-    
-    if (!_titleHiddenCell)
-    {
-        _titleHiddenCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-        _titleHiddenCell.selectionStyle = UITableViewCellSelectionStyleNone;
-        _titleHiddenCell.textLabel.text = NSLocalizedString(@"Hide Meeting Title", @"");
-        
-        UISwitch *sv = [[UISwitch alloc] initWithFrame:CGRectZero];
-        [sv setOn:hidden animated:NO];
-        [sv addTarget:self action:@selector(onHideMeetingTitle:) forControlEvents:UIControlEventValueChanged];
-        _titleHiddenCell.accessoryView = sv;
-    }
-    
-    return _titleHiddenCell;
-}
-
-- (UITableViewCell*)leaveHiddenCell
-{
-    MobileRTCMeetingSettings *settings = [[MobileRTC sharedRTC] getMeetingSettings];
-    if (!settings)
-        return nil;
-    
-    BOOL hidden = [settings meetingLeaveHidden];
-    
-    if (!_leaveHiddenCell)
-    {
-        _leaveHiddenCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-        _leaveHiddenCell.selectionStyle = UITableViewCellSelectionStyleNone;
-        _leaveHiddenCell.textLabel.text = NSLocalizedString(@"Hide Meeting Leave", @"");
-        
-        UISwitch *sv = [[UISwitch alloc] initWithFrame:CGRectZero];
-        [sv setOn:hidden animated:NO];
-        [sv addTarget:self action:@selector(onHideMeetingLeave:) forControlEvents:UIControlEventValueChanged];
-        _leaveHiddenCell.accessoryView = sv;
-    }
-    
-    return _leaveHiddenCell;
-}
-
-- (UITableViewCell*)audioHiddenCell
-{
-    MobileRTCMeetingSettings *settings = [[MobileRTC sharedRTC] getMeetingSettings];
-    if (!settings)
-        return nil;
-    
-    BOOL hidden = [settings meetingAudioHidden];
-    
-    if (!_audioHiddenCell)
-    {
-        _audioHiddenCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-        _audioHiddenCell.selectionStyle = UITableViewCellSelectionStyleNone;
-        _audioHiddenCell.textLabel.text = NSLocalizedString(@"Hide Meeting Audio", @"");
-        
-        UISwitch *sv = [[UISwitch alloc] initWithFrame:CGRectZero];
-        [sv setOn:hidden animated:NO];
-        [sv addTarget:self action:@selector(onHideMeetingAudio:) forControlEvents:UIControlEventValueChanged];
-        _audioHiddenCell.accessoryView = sv;
-    }
-    
-    return _audioHiddenCell;
-}
-
-- (UITableViewCell*)videoHiddenCell
-{
-    MobileRTCMeetingSettings *settings = [[MobileRTC sharedRTC] getMeetingSettings];
-    if (!settings)
-        return nil;
-    
-    BOOL hidden = [settings meetingVideoHidden];
-    
-    if (!_videoHiddenCell)
-    {
-        _videoHiddenCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-        _videoHiddenCell.selectionStyle = UITableViewCellSelectionStyleNone;
-        _videoHiddenCell.textLabel.text = NSLocalizedString(@"Hide Meeting Video", @"");
-        
-        UISwitch *sv = [[UISwitch alloc] initWithFrame:CGRectZero];
-        [sv setOn:hidden animated:NO];
-        [sv addTarget:self action:@selector(onHideMeetingVideo:) forControlEvents:UIControlEventValueChanged];
-        _videoHiddenCell.accessoryView = sv;
-    }
-    
-    return _videoHiddenCell;
-}
-
-- (UITableViewCell*)inviteHiddenCell
-{
-    MobileRTCMeetingSettings *settings = [[MobileRTC sharedRTC] getMeetingSettings];
-    if (!settings)
-        return nil;
-    
-    BOOL hidden = [settings meetingInviteHidden];
-    
-    if (!_inviteHiddenCell)
-    {
-        _inviteHiddenCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-        _inviteHiddenCell.selectionStyle = UITableViewCellSelectionStyleNone;
-        _inviteHiddenCell.textLabel.text = NSLocalizedString(@"Hide Meeting Invite", @"");
-        
-        UISwitch *sv = [[UISwitch alloc] initWithFrame:CGRectZero];
-        [sv setOn:hidden animated:NO];
-        [sv addTarget:self action:@selector(onHideMeetingInvite:) forControlEvents:UIControlEventValueChanged];
-        _inviteHiddenCell.accessoryView = sv;
-    }
-    
-    return _inviteHiddenCell;
-}
-
-- (UITableViewCell*)participantHiddenCell
-{
-    MobileRTCMeetingSettings *settings = [[MobileRTC sharedRTC] getMeetingSettings];
-    if (!settings)
-        return nil;
-    
-    BOOL hidden = [settings meetingParticipantHidden];
-    
-    if (!_participantHiddenCell)
-    {
-        _participantHiddenCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-        _participantHiddenCell.selectionStyle = UITableViewCellSelectionStyleNone;
-        _participantHiddenCell.textLabel.text = NSLocalizedString(@"Hide Meeting Participant", @"");
-        
-        UISwitch *sv = [[UISwitch alloc] initWithFrame:CGRectZero];
-        [sv setOn:hidden animated:NO];
-        [sv addTarget:self action:@selector(onHideMeetingParticipant:) forControlEvents:UIControlEventValueChanged];
-        _participantHiddenCell.accessoryView = sv;
-    }
-    
-    return _participantHiddenCell;
-}
-
-- (UITableViewCell*)shareHiddenCell
-{
-    MobileRTCMeetingSettings *settings = [[MobileRTC sharedRTC] getMeetingSettings];
-    if (!settings)
-        return nil;
-    
-    BOOL hidden = [settings meetingShareHidden];
-    
-    if (!_shareHiddenCell)
-    {
-        _shareHiddenCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-        _shareHiddenCell.selectionStyle = UITableViewCellSelectionStyleNone;
-        _shareHiddenCell.textLabel.text = NSLocalizedString(@"Hide Meeting Share", @"");
-        
-        UISwitch *sv = [[UISwitch alloc] initWithFrame:CGRectZero];
-        [sv setOn:hidden animated:NO];
-        [sv addTarget:self action:@selector(onHideMeetingShare:) forControlEvents:UIControlEventValueChanged];
-        _shareHiddenCell.accessoryView = sv;
-    }
-    
-    return _shareHiddenCell;
-}
-
-- (UITableViewCell*)moreHiddenCell
-{
-    MobileRTCMeetingSettings *settings = [[MobileRTC sharedRTC] getMeetingSettings];
-    if (!settings)
-        return nil;
-    
-    BOOL hidden = [settings meetingMoreHidden];
-    
-    if (!_moreHiddenCell)
-    {
-        _moreHiddenCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-        _moreHiddenCell.selectionStyle = UITableViewCellSelectionStyleNone;
-        _moreHiddenCell.textLabel.text = NSLocalizedString(@"Hide Meeting More", @"");
-        
-        UISwitch *sv = [[UISwitch alloc] initWithFrame:CGRectZero];
-        [sv setOn:hidden animated:NO];
-        [sv addTarget:self action:@selector(onHideMeetingMore:) forControlEvents:UIControlEventValueChanged];
-        _moreHiddenCell.accessoryView = sv;
-    }
-    
-    return _moreHiddenCell;
-}
-
-- (UITableViewCell*)topBarHiddenCell
-{
-    MobileRTCMeetingSettings *settings = [[MobileRTC sharedRTC] getMeetingSettings];
-    if (!settings)
-        return nil;
-    
-    BOOL hidden = [settings topBarHidden];
-    
-    if (!_topBarHiddenCell)
-    {
-        _topBarHiddenCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-        _topBarHiddenCell.selectionStyle = UITableViewCellSelectionStyleNone;
-        _topBarHiddenCell.textLabel.text = NSLocalizedString(@"Hide Meeting TopBar", @"");
-        
-        UISwitch *sv = [[UISwitch alloc] initWithFrame:CGRectZero];
-        [sv setOn:hidden animated:NO];
-        [sv addTarget:self action:@selector(onHideMeetingTopBar:) forControlEvents:UIControlEventValueChanged];
-        _topBarHiddenCell.accessoryView = sv;
-    }
-    
-    return _topBarHiddenCell;
-}
-
-- (UITableViewCell*)botBarHiddenCell
-{
-    MobileRTCMeetingSettings *settings = [[MobileRTC sharedRTC] getMeetingSettings];
-    if (!settings)
-        return nil;
-    
-    BOOL hidden = [settings bottomBarHidden];
-    
-    if (!_botBarHiddenCell)
-    {
-        _botBarHiddenCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-        _botBarHiddenCell.selectionStyle = UITableViewCellSelectionStyleNone;
-        _botBarHiddenCell.textLabel.text = NSLocalizedString(@"Hide Meeting BottomBar", @"");
-        
-        UISwitch *sv = [[UISwitch alloc] initWithFrame:CGRectZero];
-        [sv setOn:hidden animated:NO];
-        [sv addTarget:self action:@selector(onHideMeetingBotBar:) forControlEvents:UIControlEventValueChanged];
-        _botBarHiddenCell.accessoryView = sv;
-    }
-    
-    return _botBarHiddenCell;
-}
-
-- (UITableViewCell*)enableKubiCell
-{
-    MobileRTCMeetingSettings *settings = [[MobileRTC sharedRTC] getMeetingSettings];
-    if (!settings)
-        return nil;
-    
-    BOOL hidden = [settings enableKubi];
-    
-    if (!_enableKubiCell)
-    {
-        _enableKubiCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-        _enableKubiCell.selectionStyle = UITableViewCellSelectionStyleNone;
-        _enableKubiCell.textLabel.text = NSLocalizedString(@"Enable Kubi Device", @"");
-        
-        UISwitch *sv = [[UISwitch alloc] initWithFrame:CGRectZero];
-        [sv setOn:hidden animated:NO];
-        [sv addTarget:self action:@selector(onEnableKubi:) forControlEvents:UIControlEventValueChanged];
-        _enableKubiCell.accessoryView = sv;
-    }
-    
-    return _enableKubiCell;
-}
-
-- (UITableViewCell*)thumbnailCell
-{
-    MobileRTCMeetingSettings *settings = [[MobileRTC sharedRTC] getMeetingSettings];
-    if (!settings)
-        return nil;
-    
-    BOOL hidden = [settings thumbnailHidden];
-    
-    if (!_thumbnailCell)
-    {
-        _thumbnailCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-        _thumbnailCell.selectionStyle = UITableViewCellSelectionStyleNone;
-        _thumbnailCell.textLabel.text = NSLocalizedString(@"Hide Thumbnail Video", @"");
-        
-        UISwitch *sv = [[UISwitch alloc] initWithFrame:CGRectZero];
-        [sv setOn:hidden animated:NO];
-        [sv addTarget:self action:@selector(onHideThumbnail:) forControlEvents:UIControlEventValueChanged];
-        _thumbnailCell.accessoryView = sv;
-    }
-    
-    return _thumbnailCell;
-}
-
-- (UITableViewCell*)hostLeaveCell
-{
-    MobileRTCMeetingSettings *settings = [[MobileRTC sharedRTC] getMeetingSettings];
-    if (!settings)
-        return nil;
-    
-    BOOL hidden = [settings hostLeaveHidden];
-    
-    if (!_hostLeaveCell)
-    {
-        _hostLeaveCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-        _hostLeaveCell.selectionStyle = UITableViewCellSelectionStyleNone;
-        _hostLeaveCell.textLabel.text = NSLocalizedString(@"Host Hide Leave Meeting", @"");
-        
-        UISwitch *sv = [[UISwitch alloc] initWithFrame:CGRectZero];
-        [sv setOn:hidden animated:NO];
-        [sv addTarget:self action:@selector(onHideHostLeave:) forControlEvents:UIControlEventValueChanged];
-        _hostLeaveCell.accessoryView = sv;
-    }
-    
-    return _hostLeaveCell;
+    return _meetingCell;
 }
 
 - (UITableViewCell*)languageCell
@@ -549,119 +107,82 @@
     return _languageCell;
 }
 
-
-- (void)onAutoConnectAudio:(id)sender
-{
-    UISwitch *sv = (UISwitch*)sender;
-    [[[MobileRTC sharedRTC] getMeetingSettings] setAutoConnectInternetAudio:sv.on];
+- (UITableViewCell *)sendLogCell {
+    if (!_sendLogCell)
+    {
+        _sendLogCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
+        _sendLogCell.selectionStyle = UITableViewCellSelectionStyleNone;
+        _sendLogCell.textLabel.text = NSLocalizedString(@"Send Logs By Email", @"");
+        _sendLogCell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+    }
+    
+    return _sendLogCell;
 }
 
-- (void)onMuteAudio:(id)sender
-{
-    UISwitch *sv = (UISwitch*)sender;
-    [[[MobileRTC sharedRTC] getMeetingSettings] setMuteAudioWhenJoinMeeting:sv.on];
+- (UITableViewCell *)cleanLogCell {
+    if (!_cleanLogCell)
+    {
+        _cleanLogCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
+        _cleanLogCell.selectionStyle = UITableViewCellSelectionStyleNone;
+        _cleanLogCell.textLabel.text = NSLocalizedString(@"Clean all Logs", @"");
+        _cleanLogCell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+    }
+    
+    return _cleanLogCell;
 }
 
-- (void)onMuteVideo:(id)sender
-{
-    UISwitch *sv = (UISwitch*)sender;
-    [[[MobileRTC sharedRTC] getMeetingSettings] setMuteVideoWhenJoinMeeting:sv.on];
+- (UITableViewCell *)swtichDomainCell {
+    if (!_swtichDomainCell)
+    {
+        _swtichDomainCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
+        _swtichDomainCell.selectionStyle = UITableViewCellSelectionStyleNone;
+        _swtichDomainCell.textLabel.text = NSLocalizedString(@"Switch Domain and Auth Again", @"");
+        _swtichDomainCell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+    }
+    
+    return _swtichDomainCell;
 }
 
-- (void)onDisableDriveMode:(id)sender
+- (UITableViewCell*)loginCell
 {
-    UISwitch *sv = (UISwitch*)sender;
-    [[[MobileRTC sharedRTC] getMeetingSettings] disableDriveMode:sv.on];
+    if (!_loginCell)
+    {
+        _loginCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
+        _loginCell.selectionStyle = UITableViewCellSelectionStyleNone;
+        _loginCell.textLabel.text = NSLocalizedString(@"Sign In", @"");
+        _loginCell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+    }
+    
+    BOOL isLoggedIn = [[[MobileRTC sharedRTC] getAuthService] isLoggedIn];
+    NSString *title = isLoggedIn ? NSLocalizedString(@"Sign Out", @"") : NSLocalizedString(@"Sign In", @"");
+    UIColor *titleColor = isLoggedIn ? [UIColor redColor] : [UIColor blueColor];
+    _loginCell.textLabel.text = title;
+    _loginCell.textLabel.textColor = titleColor;
+    
+    return _loginCell;
 }
 
-- (void)onDisableCallIn:(id)sender
+- (UITableViewCell*)scheduleCell
 {
-    UISwitch *sv = (UISwitch*)sender;
-    [[[MobileRTC sharedRTC] getMeetingSettings] disableCallIn:sv.on];
+    if (!_scheduleCell)
+    {
+        _scheduleCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
+        _scheduleCell.selectionStyle = UITableViewCellSelectionStyleNone;
+        _scheduleCell.textLabel.text = NSLocalizedString(@"Schedule Meeting", @"");
+        _scheduleCell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+    }
+    
+    return _scheduleCell;
 }
 
-- (void)onDisableCallOut:(id)sender
+- (SDKAuthPresenter *)authPresenter
 {
-    UISwitch *sv = (UISwitch*)sender;
-    [[[MobileRTC sharedRTC] getMeetingSettings] disableCallOut:sv.on];
-}
-
-- (void)onHideMeetingTitle:(id)sender
-{
-    UISwitch *sv = (UISwitch*)sender;
-    [[MobileRTC sharedRTC] getMeetingSettings].meetingTitleHidden = sv.on;
-}
-
-- (void)onHideMeetingLeave:(id)sender
-{
-    UISwitch *sv = (UISwitch*)sender;
-    [[MobileRTC sharedRTC] getMeetingSettings].meetingLeaveHidden = sv.on;
-}
-
-- (void)onHideMeetingAudio:(id)sender
-{
-    UISwitch *sv = (UISwitch*)sender;
-    [[MobileRTC sharedRTC] getMeetingSettings].meetingAudioHidden = sv.on;
-}
-
-- (void)onHideMeetingVideo:(id)sender
-{
-    UISwitch *sv = (UISwitch*)sender;
-    [[MobileRTC sharedRTC] getMeetingSettings].meetingVideoHidden = sv.on;
-}
-
-- (void)onHideMeetingInvite:(id)sender
-{
-    UISwitch *sv = (UISwitch*)sender;
-    [[MobileRTC sharedRTC] getMeetingSettings].meetingInviteHidden = sv.on;
-}
-
-- (void)onHideMeetingParticipant:(id)sender
-{
-    UISwitch *sv = (UISwitch*)sender;
-    [[MobileRTC sharedRTC] getMeetingSettings].meetingParticipantHidden = sv.on;
-}
-
-- (void)onHideMeetingShare:(id)sender
-{
-    UISwitch *sv = (UISwitch*)sender;
-    [[MobileRTC sharedRTC] getMeetingSettings].meetingShareHidden = sv.on;
-}
-
-- (void)onHideMeetingMore:(id)sender
-{
-    UISwitch *sv = (UISwitch*)sender;
-    [[MobileRTC sharedRTC] getMeetingSettings].meetingMoreHidden = sv.on;
-}
-
-- (void)onHideMeetingTopBar:(id)sender
-{
-    UISwitch *sv = (UISwitch*)sender;
-    [[MobileRTC sharedRTC] getMeetingSettings].topBarHidden = sv.on;
-}
-
-- (void)onHideMeetingBotBar:(id)sender
-{
-    UISwitch *sv = (UISwitch*)sender;
-    [[MobileRTC sharedRTC] getMeetingSettings].bottomBarHidden = sv.on;
-}
-
-- (void)onEnableKubi:(id)sender
-{
-    UISwitch *sv = (UISwitch*)sender;
-    [[MobileRTC sharedRTC] getMeetingSettings].enableKubi = sv.on;
-}
-
-- (void)onHideThumbnail:(id)sender
-{
-    UISwitch *sv = (UISwitch*)sender;
-    [[MobileRTC sharedRTC] getMeetingSettings].thumbnailHidden = sv.on;
-}
-
-- (void)onHideHostLeave:(id)sender
-{
-    UISwitch *sv = (UISwitch*)sender;
-    [[MobileRTC sharedRTC] getMeetingSettings].hostLeaveHidden = sv.on;
+    if (!_authPresenter)
+    {
+        _authPresenter = [[SDKAuthPresenter alloc] init];
+    }
+    
+    return _authPresenter;
 }
 
 #pragma mark - Table view data source
@@ -683,39 +204,264 @@
     return cell;
 }
 
-- (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section
-{
-    if (section == 0)
-    {
-        return NSLocalizedString(@"Auto Connect Internet Audio Setting", @"");
-    }
-    
-    if (section == 1)
-    {
-        return NSLocalizedString(@"Always mute my microphone when joining others' meeting", @"");
-    }
-    
-    if (section == 2)
-    {
-        return NSLocalizedString(@"Always mute my video when joining others' meeting", @"");
-    }
-    
-    if (section == 3 && [UIDevice currentDevice].userInterfaceIdiom != UIUserInterfaceIdiomPad)
-    {
-        return NSLocalizedString(@"Driving Mode Setting", @"");
-    }
-    
-    return nil;
-}
-
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
     UITableViewCell *cell = self.itemArray[indexPath.section][indexPath.row];
-    if (cell == _languageCell)
+    if ([cell isEqual:_languageCell])
     {
-        LanguaguePickerViewController * languaguePickerViewController = [[LanguaguePickerViewController alloc]init];
-        [self.navigationController pushViewController:languaguePickerViewController animated:YES];
-        [languaguePickerViewController release];
+        LanguaguePickerViewController * vc = [[LanguaguePickerViewController alloc]init];
+        [self.navigationController pushViewController:vc animated:YES];
+        [vc release];
+        return;
+    }
+    
+    if ([cell isEqual:_meetingCell])
+    {
+        MeetingSettingsViewController * vc = [[MeetingSettingsViewController alloc] initWithStyle:UITableViewStyleGrouped];
+        [self.navigationController pushViewController:vc animated:YES];
+        [vc release];
+        return;
+    }
+    
+    if ([cell isEqual:_sendLogCell]) {
+        [self sendByEmail];
+        return;
+    }
+    
+    if ([cell isEqual:_cleanLogCell]) {
+        [self clearLog];
+        return;
+    }
+    
+    if ([cell isEqual:_swtichDomainCell]) {
+        [self switchDomainAndAuthAgain];
+        return;
+    }
+
+    if ([cell isEqual:_loginCell])
+    {
+        if ([[[MobileRTC sharedRTC] getAuthService] isLoggedIn])
+        {
+            [self.navigationController dismissViewControllerAnimated:YES completion:^{
+                [[[MobileRTC sharedRTC] getAuthService] logoutRTC];
+            }];
+        }
+        else
+        {
+            if ([[[UIDevice currentDevice] systemVersion] floatValue] >= 8.0)
+            {
+                UIAlertController *alertController = [UIAlertController alertControllerWithTitle:NSLocalizedString(@"Select Login Type", @"")
+                                                                                         message:nil
+                                                                                  preferredStyle:UIAlertControllerStyleAlert];
+                
+                [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Login with Email", @"") style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+                    [self loginWithEmail];
+                }]];
+                [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Login with SSO", @"") style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+                    [self loginWithSSO];
+                }]];
+                
+                [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Cancel", nil) style:UIAlertActionStyleCancel handler:^(UIAlertAction *action) {
+                }]];
+                
+                [self presentViewController:alertController animated:YES completion:nil];
+            }
+        }
+        return;
+    }
+    
+    if ([cell isEqual:_scheduleCell])
+    {
+        ScheduleTableViewController *vc = [[ScheduleTableViewController alloc] initWithStyle:UITableViewStyleGrouped];
+        [self.navigationController pushViewController:vc animated:YES];
+        [vc release];
+        return;
     }
 }
+
+- (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
+    if ([[self.itemArray[section] firstObject] isEqual:_sendLogCell]) {
+        return @"Send email need configure email account in iphone first.";
+    }
+    return nil;
+}
+
+- (void)switchDomainAndAuthAgain {
+    [self.navigationController dismissViewControllerAnimated:YES completion:^{
+        UIAlertController *alertController = [UIAlertController alertControllerWithTitle:NSLocalizedString(@"Switch domain and auth again", @"")
+                                                                                 message:nil
+                                                                          preferredStyle:UIAlertControllerStyleAlert];
+        
+        [alertController addTextFieldWithConfigurationHandler:^(UITextField *textField){
+            textField.placeholder = NSLocalizedString(@"New Domain", @"");
+            textField.text = @"";
+        }];
+        
+        
+        [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"OK", @"") style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+            
+            UITextField *newDomain = alertController.textFields.firstObject;
+          
+            BOOL ret = [[MobileRTC sharedRTC] switchDomain:newDomain.text force:YES];
+            NSLog(@"switchDomain-ret ===> %d", ret);
+            
+            [[[SDKAuthPresenter alloc] init] SDKAuth:@"New SDK Key" clientSecret:@"New SDK Secret"];
+        }]];
+        
+        [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Cancel", nil) style:UIAlertActionStyleCancel handler:^(UIAlertAction *action) {
+        }]];
+        
+        UIViewController *rootVC = [UIApplication sharedApplication].keyWindow.rootViewController;
+        [rootVC presentViewController:alertController animated:YES completion:nil];
+    }];
+}
+
+- (void)loginWithEmail
+{
+    [self.navigationController dismissViewControllerAnimated:YES completion:^{
+        if ([[[UIDevice currentDevice] systemVersion] floatValue] >= 8.0)
+        {
+            UIAlertController *alertController = [UIAlertController alertControllerWithTitle:NSLocalizedString(@"Login with Email", @"")
+                                                                                     message:nil
+                                                                              preferredStyle:UIAlertControllerStyleAlert];
+            
+            [alertController addTextFieldWithConfigurationHandler:^(UITextField *textField){
+                textField.placeholder = NSLocalizedString(@"Work Email", @"");
+                textField.keyboardType = UIKeyboardTypeEmailAddress;
+                textField.text = @"";
+            }];
+            [alertController addTextFieldWithConfigurationHandler:^(UITextField *textField){
+                textField.placeholder = NSLocalizedString(@"Password", @"");
+                textField.secureTextEntry = YES;
+                textField.text = @"";
+            }];
+            
+            [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"OK", @"") style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+                UITextField *email = alertController.textFields.firstObject;
+                UITextField *password = alertController.textFields.lastObject;
+                [self.authPresenter loginWithEmail:email.text password:password.text rememberMe:YES];
+            }]];
+            
+            [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Cancel", nil) style:UIAlertActionStyleCancel handler:^(UIAlertAction *action) {
+            }]];
+            
+            UIViewController *rootVC = [UIApplication sharedApplication].keyWindow.rootViewController;
+            [rootVC presentViewController:alertController animated:YES completion:nil];
+        }
+    }];
+}
+
+- (void)loginWithSSO
+{
+    [self.navigationController dismissViewControllerAnimated:YES completion:^{
+        if ([[[UIDevice currentDevice] systemVersion] floatValue] >= 8.0)
+        {
+            UIAlertController *alertController = [UIAlertController alertControllerWithTitle:NSLocalizedString(@"Login with SSO", @"")
+                                                                                     message:nil
+                                                                              preferredStyle:UIAlertControllerStyleAlert];
+            
+            [alertController addTextFieldWithConfigurationHandler:^(UITextField *textField){
+                textField.placeholder = NSLocalizedString(@"SSO Token", @"");
+            }];
+            
+            [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"OK", @"") style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+                UITextField *token = alertController.textFields.firstObject;
+                [self.authPresenter loginWithSSOToken:token.text rememberMe:YES];
+            }]];
+            
+            [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Cancel", nil) style:UIAlertActionStyleCancel handler:^(UIAlertAction *action) {
+            }]];
+            
+            UIViewController *rootVC = [UIApplication sharedApplication].keyWindow.rootViewController;
+            [rootVC presentViewController:alertController animated:YES completion:nil];
+        }
+    }];
+}
+
+- (void)sendByEmail {
+    if ([MFMailComposeViewController canSendMail]) {
+        
+        NSString *fileName;
+        NSString *sourcePath = NSTemporaryDirectory();
+        NSMutableArray *matches = [NSMutableArray array];
+        NSDirectoryEnumerator *dirEnum = [[NSFileManager defaultManager] enumeratorAtPath:sourcePath];
+        while ((fileName = [dirEnum nextObject]))
+        {
+            if ([[fileName pathExtension] isEqualToString:@"log"]) {
+                [matches addObject:[sourcePath stringByAppendingPathComponent:fileName]];
+            }
+        }
+        
+        void (^actionBlock)(NSString*) = ^(NSString* zipFilePath){
+            __block typeof(self) weakSelf = self;
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                MFMailComposeViewController *picker = [[MFMailComposeViewController alloc] init];
+                [picker setModalPresentationStyle:UIModalPresentationFormSheet];
+                picker.mailComposeDelegate = weakSelf;
+                [picker setSubject:@"Troubleshooting log file"];
+                
+                NSDictionary *infoDictionary = [[NSBundle mainBundle] infoDictionary];
+                
+                NSString *emailBody = [NSString stringWithFormat:@"App name: %@\nApp versio: %@(%@)\nSDK Version: %@\nSDK Domain: %@\niOS: %@\nDevice: %@\r\n",[infoDictionary objectForKey:@"CFBundleDisplayName"], [infoDictionary objectForKey:@"CFBundleShortVersionString"], [infoDictionary objectForKey:@"CFBundleVersion"], [[MobileRTC sharedRTC] mobileRTCVersion], [[MobileRTC sharedRTC] mobileRTCDomain], [[UIDevice currentDevice] systemVersion], [[UIDevice currentDevice] localizedModel]];
+                [picker setMessageBody:emailBody isHTML:NO];
+                NSData *data = [NSData dataWithContentsOfMappedFile:zipFilePath];
+                [picker addAttachmentData:data mimeType:@"application/zip" fileName:@"troubleshooting.zip"];
+                [self retain];
+                UINavigationController *navController = weakSelf.navigationController;
+                if (navController.presentedViewController) [navController dismissViewControllerAnimated:NO completion:NULL];
+                [navController presentViewController:picker animated:YES completion:NULL];
+                [picker release];
+            });
+        };
+        
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+            NSString *zipFilePath = [sourcePath stringByAppendingPathComponent:@"troubleshooting.zip"];
+            [SSZipArchive createZipFileAtPath:zipFilePath withFilesAtPaths:matches];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                actionBlock(zipFilePath);
+            });
+        });
+        
+    }
+    else {
+        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:NSLocalizedString(@"Zoom", nil)
+                                                        message:NSLocalizedString(@"Troubleshooting log failed to send. Please set up the mail account in Mail app first.", nil)
+                                                       delegate:nil cancelButtonTitle:NSLocalizedString(@"OK", nil) otherButtonTitles:nil];
+        [alert show];
+        [alert release];
+    }
+}
+
+- (void)mailComposeController:(MFMailComposeViewController*)controller didFinishWithResult:(MFMailComposeResult)result error:(NSError*)error {
+    if (result == MFMailComposeResultFailed) {
+        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:NSLocalizedString(@"Zoom", nil)
+                                                        message:NSLocalizedString(@"Troubleshooting log failed to send. Please try again.", nil)
+                                                       delegate:nil cancelButtonTitle:NSLocalizedString(@"OK", nil) otherButtonTitles:nil];
+        [alert show];
+        [alert release];
+    }
+    
+    [controller dismissViewControllerAnimated:YES completion:nil];
+    NSString *sourcePath = NSTemporaryDirectory();
+    NSString *zipFilePath = [sourcePath stringByAppendingPathComponent:@"troubleshooting.zip"];
+    [[NSFileManager defaultManager] removeItemAtPath:zipFilePath error:NULL];
+}
+
+- (void)clearLog
+{
+    NSArray* tmpDirectory = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:NSTemporaryDirectory() error:NULL];
+    for (NSString *file in tmpDirectory) {
+        [[NSFileManager defaultManager] removeItemAtPath:[NSString stringWithFormat:@"%@%@", NSTemporaryDirectory(), file] error:NULL];
+    }
+    
+    UIAlertController *alertController = [UIAlertController alertControllerWithTitle:nil
+                                                                             message:NSLocalizedString(@"All log has been clear.", @"")
+                                                                      preferredStyle:UIAlertControllerStyleAlert];
+    
+    [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Done", @"") style:UIAlertActionStyleCancel handler:nil]];
+    
+    [self presentViewController:alertController animated:YES completion:nil];
+}
+
+
 @end

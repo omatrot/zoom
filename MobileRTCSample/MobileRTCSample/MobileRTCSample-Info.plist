@@ -9,7 +9,7 @@
 	<key>CFBundleExecutable</key>
 	<string>${EXECUTABLE_NAME}</string>
 	<key>CFBundleIdentifier</key>
-	<string>us.zoom.${PRODUCT_NAME:rfc1034identifier}</string>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
@@ -26,11 +26,9 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLName</key>
-			<string>us.zoom.ZoomSDKSample</string>
+			<string>us.zoom.MobileRTCSample</string>
 			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>db-zecq6smsyshct83</string>
-			</array>
+			<array/>
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
@@ -44,8 +42,12 @@
 		<key>NSAllowsArbitraryLoadsInWebContent</key>
 		<true/>
 	</dict>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>bluetoothDecription</string>
 	<key>NSCameraUsageDescription</key>
 	<string>cameraDesciption</string>
+	<key>NSContactsUsageDescription</key>
+	<string>contactsUsageDescription</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>microphoneDesciption</string>
 	<key>NSPhotoLibraryUsageDescription</key>

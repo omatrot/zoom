@@ -1,6 +1,6 @@
 /* 
   Localizable.strings
-  ZoomSDKSample
+  MobileRTCSample
 
   Created by Xiaojian Hu on 8/6/14.
   Copyright (c) 2014 Zoom Video Communications, Inc. All rights reserved.
@@ -24,6 +24,8 @@
 
 "Disable Driving Mode" = "禁用驾驶模式";
 
+"Disable Gallery View" = "禁用画廊模式";
+
 "Driving Mode Setting" = "驾驶模式下，扬声器开启，视频关闭，麦克风静音";
 
 "Invite Participant" = "邀请与会人";
@@ -31,6 +33,10 @@
 "Disable Call in" = "禁用电话呼入";
 
 "Disable Call Out" = "禁用电话呼出";
+
+"Disable Minimize Meeting" = "禁用最小化会议";
+
+"Face Beauty Enable" = "美颜";
 
 "Please join meeting with ID: %@" = "请通过会议ID: %@ 加入会议";
 
@@ -46,6 +52,8 @@
 
 "Hide Meeting Invite" = "隐藏会议邀请功能";
 
+"Hide Meeting Chat" = "隐藏会议聊天功能";
+
 "Hide Meeting Participant" = "隐藏会议参会人功能";
 
 "Hide Meeting Share" = "隐藏会议共享功能";
@@ -53,6 +61,22 @@
 "Hide Meeting TopBar" = "隐藏会议顶栏";
 
 "Hide Meeting BottomBar" = "隐藏会议底栏";
+
+"Enable Kubi Device" = "启用Kubi设备";
+
+"Change Thumbnail In Sharing" = "变更观看共享中的小视频布局";
+
+"Host Hide Leave Meeting" = "隐藏主持人离会菜单";
+
+"Hide Hint in Meeting" = "隐藏状态栏提醒";
+
+"Hide Waiting HUD" = "隐藏等待HUD";
+
+"Hide Meeting More" = "隐藏更多菜单";
+
+"Hide Meeting Password" = "隐藏会议密码";
+
+"Show My Elapse Time" = "显示我在会议里的连接时间";
 
 "SDK authentication failed, error code: %zd" = "SDK授权失败，错误码: %zd";
 
@@ -90,8 +114,6 @@
 
 "Waiting..." = "Sample 等待中...";
 
-"Zoom" = "MobileRTC Sample";
-
 "Leave" = "退出";
 
 "Leave Meeting" = "退出会议";
@@ -102,11 +124,52 @@
 
 "Zoom Meeting" = "Zoom会议";
 
-"Unable to access mic" = "麦克风被禁用";
+//For Strings included with Zoom
+"Zoom" = "MobileRTC";
 
-"Unable to access camera" = "相机被禁用";
+"Please join Zoom meeting in progress" = "请加入进行中的MobileRTC会议";
 
-"Mic Privacy Settings" = "请在设备的“设置”-“隐私”-“麦克风”中允许MobileRTC访问您的麦克风。";
+"Photos Privacy Settings" = "请在设备的“设置”-“隐私”-“照片”中允许MobileRTC访问您的照片";
 
-"Camera Privacy Settings" = "请在设备的“设置”-“隐私”-“相机”中允许MobileRTC访问您的相机。";
+"Photos Location Services" = "请在设备的“设置”-“隐私”-“定位服务”中允许MobileRTC访问您的定位服务";
+
+"Dial Telephone Alert Message" = "您是否想自动拨入会议？\n\n在拨入会议后，请返回MobileRTCSample";
+
+"Zoom cannot verify this server identity. Would you like to continue anyway?" = "MobileRTC无法验证服务器身份，您是否想继续？";
+
+"Zoom cannot verify this server identity. Please try again later." = "MobileRTC无法验证服务器身份，请稍后重试";
+
+"Mic Privacy Settings" = "请在设备的“设置”-“隐私”-“麦克风”中允许MobileRTC访问您的麦克风";
+
+"Camera Privacy Settings" = "请在设备的“设置”-“隐私”-“相机”中允许MobileRTC访问您的相机";
+
+"Contacts Privacy Settings" = "请在设备的“设置”-“隐私”-“通讯录”中允许MobileRTC访问您的通讯录";
+
+"Failed to connect to Zoom video conferencing server" = "无法连接会议服务器，更多信息请访问：https://support.zoom.us/hc/en-us/articles/201362683";
+
+"Attendee Free Meeting Reminder" = "您的免费会议将在10分钟后结束，感谢您选择MobileRTC！";
+
+"User unsupport annotation join tip" = "因为注释功能被禁止，所以您的与会者需要更新到最新的版本才能共享他们的屏幕";
+
+"Zoom will display closed captioning on main video when available" = "当字幕可用时他会被显示在主视频上";
+
+"Sign in with the specified account to join webinar" = "您需要登录指定的账号才能加入此次网络研讨会，请联系会议主持人以获取更多详细信息";
+
+"Search for Zoom Rooms" = "搜索会议室";
+
+"No Zoom Rooms" = "无会议室";
+
+"Select Zoom Rooms" = "选择会议室";
+
+"Invite Zoom Rooms" = "邀请会议室";
+
+"Meeting Settings" = "会议设置";
+
+"Schedule Meeting" = "预约会议";
+
+"Custom Meeting" = "自定义会议";
+
+"Enable Waiting Room" = "启用等候室";
+
+"List in the Public Event List" = "在公共会议列表中列出";
 

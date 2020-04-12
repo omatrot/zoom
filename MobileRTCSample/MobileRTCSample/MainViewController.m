@@ -1,49 +1,38 @@
 //
 //  ViewController.m
-//  ZoomSDKSample
+//  MobileRTCSample
 //
 //  Created by Robust Hu on 16/5/18.
 //  Copyright © 2016年 Zoom Video Communications, Inc. All rights reserved.
 //
 
 #import "MainViewController.h"
-#import "IntroViewController.h"
-#import "InviteViewController.h"
-#import "SplashViewController.h"
 #import "SettingsViewController.h"
 #import <MobileRTC/MobileRTC.h>
-//#import "MBProgressHUD.h"
+#import "SDKStartJoinMeetingPresenter.h"
+#import "MeetingSettingsViewController.h"
 
-#define RGBCOLOR(r, g, b)   [UIColor colorWithRed:r/255.0 green:g/255.0 blue:b/255.0 alpha:1.0]
+//#define kEnableSMSService
 
-#define BUTTON_FONT [UIFont fontWithName:@"HelveticaNeue-Bold" size:18.0]
+@interface MainViewController ()<UIAlertViewDelegate, UIActionSheetDelegate, MobileRTCMeetingServiceDelegate,MobileRTCMeetingShareActionItemDelegate
+#if kEnableSMSService
+, MobileRTCSMSServiceDelegate
+#endif
+>
 
-#define kSDKUserID      @""
-#define kSDKUserName    @""
-#define kSDKUserToken   @""
-#define kSDKMeetNumber  @""
-//the following parameters are optional, just for special customer
-#define kParticipantID  @""
-#define kWebinarToken   @""
+@property (assign, nonatomic) NSTimer  *clockTimer;
 
+@property (retain, nonatomic) SDKStartJoinMeetingPresenter *presenter;
 
-@interface MainViewController ()<UIAlertViewDelegate, UIActionSheetDelegate, MobileRTCMeetingServiceDelegate>
-
-@property (retain, nonatomic) UIButton *meetButton;
-@property (retain, nonatomic) UIButton *joinButton;
-
-@property (retain, nonatomic) IntroViewController  *introVC;
-@property (retain, nonatomic) SplashViewController *splashVC;
-
-@property (retain, nonatomic) UIButton *shareButton;
-@property (retain, nonatomic) UIButton *expandButton;
-@property (retain, nonatomic) UIButton *settingButton;
-
-@property (assign, nonatomic) BOOL isSharing;
-
+#if kEnableSMSService
+@property (retain, nonatomic) MobileRTCVerifySMSHandler *verifyHandler;
+#endif
 @end
 
 @implementation MainViewController
+{
+    UIView *snapshotView;
+}
 
 - (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
 {
@@ -58,7 +47,9 @@
 {
     self.meetButton = nil;
     self.joinButton = nil;
+    self.presenter = nil;
     
+    [[MobileRTC sharedRTC] getMeetingService].customizedUImeetingDelegate = nil;
     [super dealloc];
 }
 
@@ -72,6 +63,7 @@
     
     [self showIntroView];
     [self showSplashView];
+    [self showWebView];
     
     [self.view addSubview:self.expandButton];
     self.expandButton.hidden = YES;
@@ -83,10 +75,10 @@
 //    self.settingButton.hidden = YES;
     
 //    //For Enable/Disable Copy URL
-//    [ZoomSDKInviteHelper sharedInstance].disableCopyURL = YES;
+//    [MobileRTCInviteHelper sharedInstance].disableCopyURL = YES;
     
 //    //For Enable/Disable Invite by Message
-//    [ZoomSDKInviteHelper sharedInstance].disableInviteSMS = YES;
+//    [MobileRTCInviteHelper sharedInstance].disableInviteSMS = YES;
     
 //    MBProgressHUD* hud = [[MBProgressHUD alloc] initWithView:self.view];
 //    [self.view addSubview:hud];
@@ -128,18 +120,72 @@
 #define padding 20
 #define button1 50
 #define button2 30
+
     CGFloat btnWidth = MIN(floorf((bounds.size.width - 3 * padding)/2), 160);
     CGFloat btnHeight = 46;
     
-    _meetButton.frame = CGRectMake(bounds.size.width/2-btnWidth-padding/2, bounds.size.height-1.5*padding-btnHeight, btnWidth, btnHeight);
-    _joinButton.frame = CGRectMake(bounds.size.width/2+padding/2, bounds.size.height-1.5*padding-btnHeight, btnWidth, btnHeight);
+    CGFloat safeAreaTop = 0.0f;
+    CGFloat safeAreaBottom = 0.0f;
+    if(fabs(bounds.size.height - 812.0f) < 0.01f) {
+        safeAreaTop = 44.0f;
+        safeAreaBottom = 34.0f;
+    }
+
+    _meetButton.frame = CGRectMake(bounds.size.width/2-btnWidth-padding/2, bounds.size.height-1.5*padding -btnHeight - safeAreaBottom, btnWidth, btnHeight);
+    _joinButton.frame = CGRectMake(bounds.size.width/2+padding/2, bounds.size.height-1.5*padding-btnHeight - safeAreaBottom, btnWidth, btnHeight);
     
-    _expandButton.frame = CGRectMake(bounds.size.width-button1-padding, bounds.size.height-button1-padding, button1, button1);
+    _expandButton.frame = CGRectMake(bounds.size.width-button1-padding, bounds.size.height-button1 -padding - safeAreaBottom, button1, button1);
     
-    _settingButton.frame = CGRectMake(bounds.size.width-button2-padding, 1.5*padding, button2, button2);
+    _settingButton.frame = CGRectMake(bounds.size.width-button2-padding, 1.5*padding + safeAreaTop, button2, button2);
+}
+
+- (SDKStartJoinMeetingPresenter *)presenter
+{
+    if (!_presenter)
+    {
+        _presenter = [[SDKStartJoinMeetingPresenter alloc] init];
+        _presenter.mainVC = self;
+    }
+    
+    return _presenter;
 }
 
 #pragma mark - Sub Views
+- (void)showIntroView
+{
+    IntroViewController *vc = [IntroViewController new];
+    self.introVC = vc;
+    
+    [self addChildViewController:self.introVC];
+    [self.view insertSubview:self.introVC.view atIndex:0];
+    [self.introVC didMoveToParentViewController:self];
+    
+    self.introVC.view.frame = self.view.bounds;
+}
+
+- (void)showSplashView
+{
+    SplashViewController *vc = [SplashViewController new];
+    self.splashVC = vc;
+    
+    [self addChildViewController:self.splashVC];
+    [self.view insertSubview:self.splashVC.view atIndex:0];
+    [self.splashVC didMoveToParentViewController:self];
+    
+    self.splashVC.view.frame = self.view.bounds;
+}
+
+- (void)showWebView
+{
+    WebViewController *vc = [WebViewController new];
+    self.webVC = vc;
+    
+    [self addChildViewController:self.webVC];
+    [self.view insertSubview:self.webVC.view atIndex:0];
+    [self.webVC didMoveToParentViewController:self];
+    
+    self.webVC.view.frame = self.view.bounds;
+}
 
 - (UIButton*)meetButton
 {
@@ -167,30 +213,6 @@
     }
     
     return _joinButton;
-}
-
-- (void)showIntroView
-{
-    IntroViewController *vc = [IntroViewController new];
-    self.introVC = vc;
-    
-    [self addChildViewController:self.introVC];
-    [self.view insertSubview:self.introVC.view atIndex:0];
-    [self.introVC didMoveToParentViewController:self];
-    
-    self.introVC.view.frame = self.view.bounds;
-}
-
-- (void)showSplashView
-{
-    SplashViewController *vc = [SplashViewController new];
-    self.splashVC = vc;
-    
-    [self addChildViewController:self.splashVC];
-    [self.view insertSubview:self.splashVC.view atIndex:0];
-    [self.splashVC didMoveToParentViewController:self];
-    
-    self.splashVC.view.frame = self.view.bounds;
 }
 
 - (UIButton*)shareButton
@@ -233,6 +255,7 @@
     return _settingButton;
 }
 
+#pragma mark - action -
 - (void)onMeetNow:(id)sender
 {
     MobileRTCMeetingService *ms = [[MobileRTC sharedRTC] getMeetingService];
@@ -247,12 +270,36 @@
                                                                                  message:nil
                                                                           preferredStyle:UIAlertControllerStyleAlert];
         
-        [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"App Share Meeting", @"") style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-            [self startMeeting:YES];
-        }]];
-        [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Zoom Meeting", @"") style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-            [self startMeeting:NO];
-        }]];
+        if ([[[MobileRTC sharedRTC] getMeetingSettings] enableCustomMeeting])
+        {
+            BOOL enbleRawdataUI = [[NSUserDefaults standardUserDefaults] boolForKey:Raw_Data_UI_Enable];
+            
+            if (!enbleRawdataUI) {
+                [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Custom Meeting", @"") style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+                    //                MobileRTCMeetingService *ms = [[MobileRTC sharedRTC] getMeetingService];
+                    //                if (ms)
+                    //                {
+                    //                    ms.customizedUImeetingDelegate = self;
+                    //                }
+                    [self startMeeting:NO];
+                }]];
+            } else {
+                if (enbleRawdataUI) {
+                    [alertController addAction:[UIAlertAction actionWithTitle:@"Rawdata UI" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+                        [self startMeeting:NO];
+                    }]];
+                }
+            }
+        }
+        else
+        {
+            [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"App Share Meeting", @"") style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+                [self startMeeting:YES];
+            }]];
+            [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Zoom Meeting", @"") style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+                [self startMeeting:NO];
+            }]];
+        }
         
         [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Cancel", nil) style:UIAlertActionStyleCancel handler:^(UIAlertAction *action) {
         }]];
@@ -261,7 +308,16 @@
     }
     else
     {
-        UIActionSheet *sheet = [[UIActionSheet alloc] initWithTitle:NSLocalizedString(@"Select Meeting Type", @"") delegate:self cancelButtonTitle:NSLocalizedString(@"Cancel", @"") destructiveButtonTitle:nil otherButtonTitles:NSLocalizedString(@"App Share Meeting", @""), NSLocalizedString(@"Zoom Meeting", @""), nil];
+        UIActionSheet *sheet = [[UIActionSheet alloc] initWithTitle:NSLocalizedString(@"Select Meeting Type", @"") delegate:self cancelButtonTitle:NSLocalizedString(@"Cancel", @"") destructiveButtonTitle:nil otherButtonTitles:nil];
+        if ([[[MobileRTC sharedRTC] getMeetingSettings] enableCustomMeeting])
+        {
+            [sheet addButtonWithTitle:NSLocalizedString(@"Custom Meeting", @"")];
+        }
+        else
+        {
+            [sheet addButtonWithTitle:NSLocalizedString(@"App Share Meeting", @"")];
+            [sheet addButtonWithTitle:NSLocalizedString(@"Zoom Meeting", @"")];
+        }
         
         [sheet showInView:self.view];
     }
@@ -269,12 +325,6 @@
 
 - (void)onJoinaMeeting:(id)sender
 {
-    MobileRTCMeetingService *ms = [[MobileRTC sharedRTC] getMeetingService];
-    if (!ms)
-    {
-        return;
-    }
-    
     UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"" message:NSLocalizedString(@"Please input the meeting number", @"") delegate:self cancelButtonTitle:NSLocalizedString(@"Cancel", @"") otherButtonTitles:NSLocalizedString(@"OK", @""), nil];
     
     alert.alertViewStyle = UIAlertViewStyleLoginAndPasswordInput;
@@ -299,14 +349,27 @@
 
 - (void)onShareBtn:(id)sender
 {
-    _isSharing = !_isSharing;
-    
-    UIView *shareView = _isSharing ? self.introVC.view : self.splashVC.view;
+    _isSharingWebView = !_isSharingWebView;
+ 
     MobileRTCMeetingService *ms = [[MobileRTC sharedRTC] getMeetingService];
-    [ms appShareWithView:shareView];
+    if (_isSharingWebView)
+    {
+        if ([ms isDirectAppShareMeeting]) {
+            [self.view insertSubview:self.webVC.view aboveSubview:self.introVC.view];
+            
+            [ms appShareWithView:self.webVC.webView];
+        }
+    }
+    else
+    {
+        [self.view insertSubview:self.introVC.view aboveSubview:self.webVC.view];
+        [ms appShareWithView:self.splashVC.view];
+    }
     
-    UIImage *image = [UIImage imageNamed:_isSharing?@"icon_pause":@"icon_resume"];
-    [self.shareButton setImage:image forState:UIControlStateNormal];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.25 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        UIImage *image = [UIImage imageNamed:_isSharingWebView?@"icon_pause":@"icon_resume"];
+        [self.shareButton setImage:image forState:UIControlStateNormal];
+    });
 }
 
 - (void)onExpand:(id)sender
@@ -328,7 +391,7 @@
     
     SettingsViewController *vc = [[SettingsViewController alloc] initWithStyle:UITableViewStyleGrouped];
     UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
-    nav.modalPresentationStyle = UIModalPresentationFormSheet;
+    nav.modalPresentationStyle = UIModalPresentationFullScreen;
     
     [self presentViewController:nav animated:YES completion:NULL];
     
@@ -337,88 +400,49 @@
 }
 
 #pragma mark - Start/Join Meeting
-
 - (void)startMeeting:(BOOL)appShare
 {
-    MobileRTCMeetingService *ms = [[MobileRTC sharedRTC] getMeetingService];
-    if (ms)
-    {
-#if 0
-        //customize meeting title
-        [ms customizeMeetingTitle:@"Sample Meeting Title"];
-#endif
-        
-        ms.delegate = self;
-        //If App share meeting is expected, please set kMeetingParam_IsAppShare to YES, or just remove this parameter.
-        
-        //For API User, the user type should be ZoomSDKUserType_APIUser.
-        NSDictionary *paramDict = @{kMeetingParam_UserID:kSDKUserID,
-                                    kMeetingParam_UserToken:kSDKUserToken,
-                                    kMeetingParam_UserType:@(MobileRTCUserType_APIUser),
-                                    kMeetingParam_Username:kSDKUserName,
-                                    kMeetingParam_MeetingNumber:kSDKMeetNumber,
-                                    kMeetingParam_IsAppShare:@(appShare),
-                                    //kMeetingParam_ParticipantID:kParticipantID,
-                                    //kMeetingParam_NoAudio:@(YES),
-                                    //kMeetingParam_NoVideo:@(YES),
-                                    };
-        
-//        //For login user start scheduled meeting, user type can be ignored
-//        NSDictionary *paramDict = @{
-//                                    //kMeetingParam_UserType:@(ZoomSDKUserType_ZoomUser),
-//                                    kMeetingParam_MeetingNumber:kSDKMeetNumber,
-//                                    //kMeetingParam_IsAppShare:@(YES)
-//                                    };
-//
-//        //For login user start instant meeting, user type can be ignored
-//        NSDictionary *paramDict = @{
-//                                    //kMeetingParam_UserType:@(ZoomSDKUserType_ZoomUser),
-//                                    //kMeetingParam_IsAppShare:@(YES)
-//                                    };
-        
-        MobileRTCMeetError ret = [ms startMeetingWithDictionary:paramDict];
-        
-        NSLog(@"onMeetNow ret:%d", ret);
-    }
+    [self.presenter startMeeting:appShare rootVC:self];
 }
 
 - (void)joinMeeting:(NSString*)meetingNo withPassword:(NSString*)pwd
 {
     if (![meetingNo length])
         return;
-
-    MobileRTCMeetingService *ms = [[MobileRTC sharedRTC] getMeetingService];
-    if (ms)
-    {
-        ms.delegate = self;
-        
-        //For Join a meeting with password
-        NSDictionary *paramDict = @{
-                                    kMeetingParam_Username:kSDKUserName,
-                                    kMeetingParam_MeetingNumber:meetingNo,
-                                    kMeetingParam_MeetingPassword:pwd,
-                                    //kMeetingParam_ParticipantID:kParticipantID,
-                                    //kMeetingParam_WebinarToken:kWebinarToken,
-                                    //kMeetingParam_NoAudio:@(YES),
-                                    //kMeetingParam_NoVideo:@(YES),
-                                    };
-//            //For Join a meeting
-//            NSDictionary *paramDict = @{
-//                                        kMeetingParam_Username:kSDKUserName,
-//                                        kMeetingParam_MeetingNumber:meetingNo,
-//                                        kMeetingParam_MeetingPassword:pwd,
-//                                        };
-        
-        MobileRTCMeetError ret = [ms joinMeetingWithDictionary:paramDict];
-        
-        NSLog(@"onJoinaMeeting ret:%d", ret);
-    }
+    [self.presenter joinMeeting:meetingNo withPassword:pwd rootVC:self];
 }
 
 #pragma mark - AlertView/ActionSheet Delegate
 
 - (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex
 {
+    NSLog(@"alertView.tag == %ld",alertView.tag);
+    if (alertView.tag == 10022 && self.joinMeetingBlock)
+    {
+        NSString *name = [alertView textFieldAtIndex:0].text;
+        NSString *pwd = [alertView textFieldAtIndex:1].text;
+        BOOL cancel = (buttonIndex == alertView.cancelButtonIndex);
+        
+        self.joinMeetingBlock(name, pwd, cancel);
+        self.joinMeetingBlock = nil;
+        return;
+    }
+#if kEnableSMSService
+    if (alertView.tag == 10023)
+    {
+        NSString *verifyCode = [alertView textFieldAtIndex:0].text;
+        BOOL cancel = (buttonIndex == alertView.cancelButtonIndex);
+        if (!cancel && verifyCode.length > 0) {
+            if (![self.verifyHandler verify:@"" phoneNumber:@"" andVerifyCode:@""]) {
+                // retry to get verify handle again
+            }
+        } else {
+            [self.verifyHandler cancelAndLeaveMeeting];
+        }
+        return;
+    }
+#endif
+    
     if (buttonIndex != alertView.cancelButtonIndex)
     {
         NSString *meetingNo = [alertView textFieldAtIndex:0].text;
@@ -438,186 +462,74 @@
     {
         [self startMeeting:NO];
     }
-}
-
-#pragma mark - Meeting Service Delegate
-
-- (void)onMeetingReturn:(MobileRTCMeetError)error internalError:(NSInteger)internalError
-{
-    NSLog(@"onMeetingReturn:%d, internalError:%zd", error, internalError);
-}
-
-- (void)onMeetingError:(NSInteger)error message:(NSString*)message
-{
-    NSLog(@"onMeetingError:%zd, message:%@", error, message);
-}
-
-- (void)onMeetingStateChange:(MobileRTCMeetingState)state
-{
-    NSLog(@"onMeetingStateChange:%d", state);
-    
-    MobileRTCMeetingService *ms = [[MobileRTC sharedRTC] getMeetingService];
-    BOOL inAppShare = [ms isDirectAppShareMeeting] && (state == MobileRTCMeetingState_InMeeting);
-    self.expandButton.hidden = !inAppShare;
-    self.shareButton.hidden = !inAppShare;
-    self.meetButton.hidden = inAppShare;
-    self.joinButton.hidden = inAppShare;
-    
-    if (state != MobileRTCMeetingState_InMeeting)
+    else if ([[actionSheet buttonTitleAtIndex:buttonIndex] isEqualToString:NSLocalizedString(@"Custom Meeting", @"")])
     {
-        self.isSharing = NO;
+        [self startMeeting:NO];
     }
-    
-#if 1
-    if (state == MobileRTCMeetingState_InMeeting)
+}
+
+#pragma mark - Timer
+
+- (void)startClockTimer
+{
+    NSTimeInterval interval = 1.0;
+    NSTimer *timer = [NSTimer scheduledTimerWithTimeInterval:interval target:self selector:@selector(handleClockTimer:) userInfo:nil repeats:YES];
+    self.clockTimer = timer;
+}
+
+- (void)stopClockTimer
+{
+    if ([self.clockTimer isValid])
     {
-        //For customizing the content of Invite by SMS
-        NSString *meetingID = [[MobileRTCInviteHelper sharedInstance] meetingID];
-        NSString *smsMessage = [NSString stringWithFormat:NSLocalizedString(@"Please join meeting with ID: %@", @""), meetingID];
-        [[MobileRTCInviteHelper sharedInstance] setInviteSMS:smsMessage];
+        [self.clockTimer invalidate];
+        self.clockTimer = nil;
+    }
+}
+
+- (void)handleClockTimer:(NSTimer *)theTimer
+{
+    MobileRTCMeetingService *ms = [[MobileRTC sharedRTC] getMeetingService];
+    MobileRTCNetworkQuality sendQuality = [ms queryNetworkQuality:MobileRTCComponentType_VIDEO withDataFlow:YES];
+    MobileRTCNetworkQuality receiveQuality = [ms queryNetworkQuality:MobileRTCComponentType_VIDEO withDataFlow:NO];
+    NSLog(@"Query Network Data [sending: %@, receiving: %@]...", @(sendQuality), @(receiveQuality));
+}
+
+#if kEnableSMSService
+#pragma mark - sms service notification -
+- (void)onNeedRealNameAuth:(NSString *)bindPhoneUrl signupUrl:(NSString *)signupUrl
+{
+    NSLog(@"bindPhoneUrl:%@, signupUrl: %@", bindPhoneUrl, signupUrl);
+}
+
+- (void)onNeedRealNameAuth:(NSArray<MobileRTCRealNameCountryInfo *> *)supportCountryList privacyURL:(NSString *)privacyUrl retrieveHandle:(MobileRTCRetrieveSMSHandler *)handle
+{
+    NSLog(@"Country List:%@, privacyUrl: %@, sendSMSHandle: %@", supportCountryList, privacyUrl, handle);
+    if (![handle retrieve:@"" andPhoneNumber:@""]) {
+        // retry to get retrieve handle again
+    }
+}
+
+- (void)onRetrieveSMSVerificationCodeResultNotification:(MobileRTCSMSServiceErr)result verifyHandle:(MobileRTCVerifySMSHandler *)handler
+{
+    NSLog(@"send SMS cmd result %@, verify handle %@", @(result), handler);
+    self.verifyHandler = handler;
+    
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"" message:NSLocalizedString(@"Please input verify code", @"") delegate:self cancelButtonTitle:NSLocalizedString(@"Cancel", @"") otherButtonTitles:NSLocalizedString(@"OK", @""), nil];
         
-        //For customizing the content of Copy URL
-        NSString *joinURL = [[MobileRTCInviteHelper sharedInstance] joinMeetingURL];
-        NSString *copyURLMsg = [NSString stringWithFormat:NSLocalizedString(@"Meeting URL: %@", @""), joinURL];
-        [[MobileRTCInviteHelper sharedInstance] setInviteCopyURL:copyURLMsg];
-    }
-#endif
-    
-#if 0
-    //For adding customize view above the meeting view
-    if (state == ZoomSDKMeetingState_InMeeting)
-    {
-        MobileRTCMeetingService *ms = [[MobileRTC sharedRTC] getMeetingService];
-        UIView *v = [ms meetingView];
-        
-        UIView *sv = [[UIView alloc] initWithFrame:CGRectMake(30, 100, 50, 50)];
-        sv.backgroundColor = [UIColor redColor];
-        [v addSubview:sv];
-        [sv release];
-    }
-    
-#endif
+        alert.alertViewStyle = UIAlertViewStylePlainTextInput;
+        alert.tag = 10023;
+        [alert show];
+        [alert release];
+    });
 }
 
-- (void)onMeetingReady
+- (void)onVerifySMSVerificationCodeResultNotification:(MobileRTCSMSServiceErr)result
 {
-    MobileRTCMeetingService *ms = [[MobileRTC sharedRTC] getMeetingService];
-    if ([ms isDirectAppShareMeeting])
-    {
-        if ([ms isStartingShare] || [ms isViewingShare])
-        {
-            NSLog(@"There exist an ongoing share");
-            [ms showMobileRTCMeeting:nil];
-            return;
-        }
-        
-        BOOL ret = [ms startAppShare];
-        NSLog(@"Start App Share... ret:%zd", ret);
-    }
-}
-
-- (void)onAppShareSplash
-{
-    MobileRTCMeetingService *ms = [[MobileRTC sharedRTC] getMeetingService];
-    if (ms)
-    {
-        [ms appShareWithView:self.splashVC.view];
-        
-        [self.shareButton setImage:[UIImage imageNamed:@"icon_resume"] forState:UIControlStateNormal];
-        self.isSharing = NO;
-    }
-}
-
-- (void)onClickedShareButton
-{
-    MobileRTCMeetingService *ms = [[MobileRTC sharedRTC] getMeetingService];
-    if (ms)
-    {
-        if ([ms isStartingShare] || [ms isViewingShare])
-        {
-            NSLog(@"There exist an ongoing share");
-            return;
-        }
-
-        [ms hideMobileRTCMeeting:^(void){
-            [ms startAppShare];
-        }];
-    }
-}
-
-- (void)onOngoingShareStopped
-{
-    NSLog(@"There does not exist ongoing share");
-//    MobileRTCMeetingService *ms = [[MobileRTC sharedRTC] getMeetingService];
-//    if (ms)
-//    {
-//        [ms startAppShare];
-//    }
-}
-
-#if 0
-- (void)onJBHWaitingWithCmd:(JBHCmd)cmd
-{
-    switch (cmd) {
-        case JBHCmd_Show:
-        {
-            UIViewController *vc = [UIViewController new];
-            
-            NSString *meetingID = [ZoomSDKInviteHelper sharedInstance].meetingID;
-            vc.title = meetingID;
-            
-            UIBarButtonItem *leaveItem = [[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"Leave", @"") style:UIBarButtonItemStylePlain target:self action:@selector(onLeave:)];
-            [vc.navigationItem setRightBarButtonItem:leaveItem];
-            
-            UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
-            nav.modalPresentationStyle = UIModalPresentationFormSheet;
-            [self presentViewController:nav animated:YES completion:NULL];
-        }
-            break;
-            
-        case JBHCmd_Hide:
-        default:
-        {
-            [self dismissViewControllerAnimated:YES completion:NULL];
-        }
-            break;
-    }
+    NSLog(@"verify sms result %@", @(result));
 }
 #endif
-
-#if 0
-- (void)onClickedInviteButton:(UIViewController*)parentVC
-{
-    InviteViewController *inviteVC = [[InviteViewController alloc] init];
-    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:inviteVC];
-    nav.modalPresentationStyle = UIModalPresentationFormSheet;
-    
-    [parentVC presentViewController:nav animated:YES completion:NULL];
-}
-#endif
-
-#if 0
-- (void)onClickedDialOut:(UIViewController*)parentVC isCallMe:(BOOL)me
-{
-    MobileRTCMeetingService *ms = [[MobileRTC sharedRTC] getMeetingService];
-    if (!ms)
-        return;
-    
-    if ([ms isDialOutInProgress])
-    {
-        NSLog(@"There already exists an ongoing call");
-        return;
-    }
-    
-    NSString *callName = me ? nil : @"Dialer";
-    BOOL ret = [ms dialOut:@"+866004" isCallMe:me withName:callName];
-    NSLog(@"Dial out result: %zd", ret);
-}
-
-- (void)onDialOutStatusChanged:(DialOutStatus)status
-{
-    NSLog(@"onDialOutStatusChanged: %zd", status);
-}
-#endif
-
 @end
+
+
+

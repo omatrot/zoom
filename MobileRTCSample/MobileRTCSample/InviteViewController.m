@@ -1,6 +1,6 @@
 //
 //  InviteViewController.m
-//  ZoomSDKSample
+//  MobileRTCSample
 //
 //  Created by Robust Hu on 7/30/15.
 //  Copyright (c) 2015 Zoom Video Communications, Inc. All rights reserved.
@@ -33,8 +33,8 @@
     UIBarButtonItem *doneItem = [[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"Pause/Resume", @"") style:UIBarButtonItemStyleBordered target:self action:@selector(onDone:)];
     [self.navigationItem setRightBarButtonItem:doneItem];
     
-    NSString *meetingID = [MobileRTCInviteHelper sharedInstance].meetingID;
-    self.title = meetingID;
+    NSString *meetingNumber = [MobileRTCInviteHelper sharedInstance].ongoingMeetingNumber;
+    self.title = meetingNumber;
     
     [self.view addSubview:self.meetingURLLabel];
     NSString *meetingURL = [MobileRTCInviteHelper sharedInstance].joinMeetingURL;
@@ -94,8 +94,8 @@
 
 - (void)onDone:(id)sender
 {
-    BOOL isNoAudio = [[[MobileRTC sharedRTC] getMeetingService] isNoMeetingAudio];
-    [[[MobileRTC sharedRTC] getMeetingService] pauseMeetingAudio:!isNoAudio];
+    BOOL isNoAudio = ([[[MobileRTC sharedRTC] getMeetingService] myAudioType] == MobileRTCAudioType_None);
+    [[[MobileRTC sharedRTC] getMeetingService] connectMyAudio:isNoAudio];
 }
 
 @end

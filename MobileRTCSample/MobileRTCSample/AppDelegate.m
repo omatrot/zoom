@@ -1,6 +1,6 @@
 //
 //  AppDelegate.m
-//  ZoomSDKSample
+//  MobileRTCSample
 //
 //  Created by Robust Hu on 3/17/14.
 //  Copyright (c) 2014 Zoom Video Communications, Inc. All rights reserved.
@@ -8,13 +8,8 @@
 
 #import "AppDelegate.h"
 #import "MainViewController.h"
-
-#define kZoomSDKAppKey      @""
-#define kZoomSDKAppSecret   @""
-#define kZoomSDKDomain      @""
-
-#define kZoomSDKEmail       @""
-#define kZoomSDKPassword    @""
+#import "SDKAuthPresenter.h"
+#import "SDKInitPresenter.h"
 
 @implementation AppDelegate
 
@@ -35,13 +30,11 @@
     self.window.backgroundColor = [UIColor whiteColor];
     [self.window makeKeyAndVisible];
     
-    //1. Set ZoomSDK Domain
-    [[MobileRTC sharedRTC] setMobileRTCDomain:kZoomSDKDomain];
-    //2. Set Root Navigation Controller
-    //Note: This step is optional, If app’s rootViewController is not a UINavigationController, just ignore this step.
-//    [[MobileRTC sharedRTC] setMobileRTCRootController:navVC];
-    //3. ZoomSDK Authorize
-    [self sdkAuth];
+    // SDK init
+    [[[SDKInitPresenter alloc] init] SDKInit:navVC];
+    
+    //4. MobileRTC Authorize
+    [[[SDKAuthPresenter alloc] init] SDKAuth:kSDKKey clientSecret:kSDKSecret];
     
     return YES;
 }
@@ -76,6 +69,7 @@
 - (void)applicationWillTerminate:(UIApplication *)application
 {
     // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
+    [[MobileRTC sharedRTC] appWillTerminate];
 }
 
 // For iOS 4.2+ support
@@ -85,90 +79,26 @@
     return YES;
 }
 
-#pragma mark - Auth Delegate
-
-- (void)sdkAuth
+- (UIViewController *)topViewController
 {
-    MobileRTCAuthService *authService = [[MobileRTC sharedRTC] getAuthService];
-    if (authService)
-    {
-        authService.delegate = self;
-        
-        authService.clientKey = kZoomSDKAppKey;
-        authService.clientSecret = kZoomSDKAppSecret;
-        
-        [authService sdkAuth];
+    UIViewController *resultVC;
+    resultVC = [self _topViewController:[[UIApplication sharedApplication].keyWindow rootViewController]];
+    while (resultVC.presentedViewController) {
+        resultVC = [self _topViewController:resultVC.presentedViewController];
     }
+    return resultVC;
 }
 
-- (void)onMobileRTCAuthReturn:(MobileRTCAuthError)returnValue
+- (UIViewController *)_topViewController:(UIViewController *)vc
 {
-    NSLog(@"onMobileRTCAuthReturn %d", returnValue);
-    
-    if (returnValue != MobileRTCAuthError_Success)
-    {
-        NSString *message = [NSString stringWithFormat:NSLocalizedString(@"SDK authentication failed, error code: %zd", @""), returnValue];
-        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"" message:message delegate:self cancelButtonTitle:NSLocalizedString(@"OK", @"") otherButtonTitles:NSLocalizedString(@"Retry", @""), nil];
-        [alert show];
+    if ([vc isKindOfClass:[UINavigationController class]]) {
+        return [self _topViewController:[(UINavigationController *)vc topViewController]];
+    } else if ([vc isKindOfClass:[UITabBarController class]]) {
+        return [self _topViewController:[(UITabBarController *)vc selectedViewController]];
+    } else {
+        return vc;
     }
-    else
-    {
-        MobileRTCAuthService *authService = [[MobileRTC sharedRTC] getAuthService];
-        if (authService)
-        {
-            [authService loginWithEmail:kZoomSDKEmail password:kZoomSDKPassword];
-        }
-    }
+    return nil;
 }
-
-- (void)onMobileRTCLoginReturn:(NSInteger)returnValue
-{
-    NSLog(@"onMobileRTCLoginReturn result=%zd", returnValue);
-    
-    MobileRTCPremeetingService *service = [[MobileRTC sharedRTC] getPreMeetingService];
-    if (service)
-    {
-        service.delegate = self;
-    }
-}
-
-- (void)onMobileRTCLogoutReturn:(NSInteger)returnValue
-{
-    NSLog(@"onMobileRTCLogoutReturn result=%zd", returnValue);
-}
-
-#pragma mark - AlertView Delegate
-
-- (void)alertView:(UIAlertView *)alertView didDismissWithButtonIndex:(NSInteger)buttonIndex
-{
-    if (buttonIndex != alertView.cancelButtonIndex)
-    {
-        [self performSelector:@selector(sdkAuth) withObject:nil afterDelay:0.f];
-    }
-}
-
-#pragma mark - Premeeting Delegate
-
-
-- (void)sinkSchedultMeeting:(NSInteger)result
-{
-    NSLog(@"sinkSchedultMeeting result: %zd", result);
-}
-
-- (void)sinkEditMeeting:(NSInteger)result
-{
-    NSLog(@"sinkEditMeeting result: %zd", result);
-}
-
-- (void)sinkDeleteMeeting:(NSInteger)result
-{
-    NSLog(@"sinkDeleteMeeting result: %zd", result);
-}
-
-- (void)sinkListMeeting:(NSInteger)result withMeetingItems:(NSArray*)array
-{
-    NSLog(@"sinkSchedultMeeting result: %zd  items: %@", result, array);
-}
-
 
 @end
